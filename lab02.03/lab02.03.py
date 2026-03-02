@@ -3,13 +3,13 @@ import sys
 import socket
 
 # Toggles dla zadań
-zad1toggle = False
-zad2toggle = False
-zad3toggle = False
+zad1toggle = True
+zad2toggle = True
+zad3toggle = True
 zad4toggle = True
 zad5toggle = True
-zad6toggle = False
-zad7toggle = False
+zad6toggle = True
+zad7toggle = True
 
 
 #zad1
