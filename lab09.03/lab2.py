@@ -22,6 +22,20 @@ TASK5_PORT = 2901
 TASK6_HOST = "127.0.0.1"
 TASK6_PORT = 2902
 
+TASK9_HOST = "127.0.0.1"
+TASK9_PORT = 2906
+
+TASK10_HOST = "127.0.0.1"
+TASK10_PORT = 2907
+
+TASK11_HOST = "127.0.0.1"
+TASK11_PORT = 2908
+TASK11_MAX_LEN = 20
+
+TASK12_HOST = TASK11_HOST
+TASK12_PORT = TASK11_PORT
+TASK12_MAX_LEN = TASK11_MAX_LEN
+
 
 TASK_TOGGLES: dict[int, bool] = {
 	1: False, #not working
@@ -31,11 +45,11 @@ TASK_TOGGLES: dict[int, bool] = {
 	5: False,
 	6: False,
 	7: False,
-	8: True,
-	9: False, #TBD
-	10: False, #TBD
-	11: False, #TBD
-	12: False, #TBD
+	8: False,
+	9: False,
+	10: False,
+	11: False,
+	12: True,
 }
 
 #not working
@@ -248,6 +262,114 @@ def task_8() -> None:
 		except OSError as error:
 			print(f"[Zadanie 8] Port {port_number}: błąd sprawdzania ({error})")
 
+
+def task_9() -> None:
+	print("[Zadanie 9] Klient UDP: IP -> hostname")
+	ip_address = input("Podaj adres IP: ").strip()
+
+	if not ip_address:
+		print("[Zadanie 9] Podaj poprawny adres IP.")
+		return
+
+	try:
+		with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+			sock.settimeout(5)
+			sock.sendto(ip_address.encode("ascii"), (TASK9_HOST, TASK9_PORT))
+			response, _ = sock.recvfrom(4096)
+
+		print(f"[Zadanie 9] Hostname dla {ip_address}: {response.decode('utf-8', errors='replace')}")
+	except OSError as error:
+		print(f"[Zadanie 9] Błąd połączenia/komunikacji: {error}")
+
+
+def task_10() -> None:
+	print("[Zadanie 10] Klient UDP: hostname -> IP")
+	hostname = input("Podaj hostname: ").strip()
+
+	if not hostname:
+		print("[Zadanie 10] Podaj poprawny hostname.")
+		return
+
+	try:
+		with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+			sock.settimeout(5)
+			sock.sendto(hostname.encode("ascii"), (TASK10_HOST, TASK10_PORT))
+			response, _ = sock.recvfrom(4096)
+
+		print(f"[Zadanie 10] Adres IP dla {hostname}: {response.decode('utf-8', errors='replace')}")
+	except OSError as error:
+		print(f"[Zadanie 10] Błąd połączenia/komunikacji: {error}")
+
+
+def task_11() -> None:
+	def recv_exact(connection: socket.socket, expected_len: int) -> bytes:
+		chunks: list[bytes] = []
+		received_len = 0
+
+		while received_len < expected_len:
+			part = connection.recv(expected_len - received_len)
+			if not part:
+				break
+			chunks.append(part)
+			received_len += len(part)
+
+		return b"".join(chunks)
+
+	print("[Zadanie 11] TCP fixed-length 20 znaków")
+	message = input("Podaj wiadomość: ")
+	message_to_send = message.ljust(TASK11_MAX_LEN)[:TASK11_MAX_LEN]
+	print(f"[Zadanie 11] Wysyłanie wiadomości znormalizowanej do {TASK11_MAX_LEN} znaków.")
+
+	try:
+		with socket.create_connection((TASK11_HOST, TASK11_PORT), timeout=5) as connection:
+			payload = message_to_send.encode("utf-8")
+			connection.sendall(payload)
+			response = recv_exact(connection, TASK11_MAX_LEN)
+
+		print(f"[Zadanie 11] Wysłano ({len(message_to_send)} znaków): {repr(message_to_send)}")
+		print(f"[Zadanie 11] Odebrano ({len(response)} bajtów): {response.decode('utf-8', errors='replace')}")
+	except OSError as error:
+		print(f"[Zadanie 11] Błąd połączenia/komunikacji: {error}")
+
+
+def task_12() -> None:
+	def send_exact(connection: socket.socket, data: bytes) -> None:
+		total_sent = 0
+		while total_sent < len(data):
+			sent = connection.send(data[total_sent:])
+			if sent == 0:
+				raise OSError("Połączenie zostało zamknięte podczas wysyłania danych.")
+			total_sent += sent
+
+	def recv_exact(connection: socket.socket, expected_len: int) -> bytes:
+		chunks: list[bytes] = []
+		received_len = 0
+
+		while received_len < expected_len:
+			part = connection.recv(expected_len - received_len)
+			if not part:
+				raise OSError("Połączenie zostało zamknięte podczas odbierania danych.")
+			chunks.append(part)
+			received_len += len(part)
+
+		return b"".join(chunks)
+
+	print("[Zadanie 12] TCP z gwarancją pełnego send/recv")
+	message = input("Podaj wiadomość: ")
+	message_to_send = message.ljust(TASK12_MAX_LEN)[:TASK12_MAX_LEN]
+	payload = message_to_send.encode("utf-8")
+
+	try:
+		with socket.create_connection((TASK12_HOST, TASK12_PORT), timeout=5) as connection:
+			send_exact(connection, payload)
+			response = recv_exact(connection, TASK12_MAX_LEN)
+
+		print(f"[Zadanie 12] Wysłano dokładnie {len(payload)} bajtów.")
+		print(f"[Zadanie 12] Odebrano dokładnie {len(response)} bajtów.")
+		print(f"[Zadanie 12] Odpowiedź: {response.decode('utf-8', errors='replace')}")
+	except OSError as error:
+		print(f"[Zadanie 12] Błąd połączenia/komunikacji: {error}")
+
 		
 
 
@@ -261,6 +383,10 @@ def main() -> None:
 		6: task_6,
 		7: task_7,
 		8: task_8,
+		9: task_9,
+		10: task_10,
+		11: task_11,
+		12: task_12,
 	}
 
 	any_task_enabled = False

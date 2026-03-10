@@ -9,7 +9,7 @@ PORT = 2908
 MAX_PACKET_LENGTH = 20
 
 def recvall(sock, msgLen):
-    msg = ""
+    msg = b""
     bytesRcvd = 0
 
     while bytesRcvd < msgLen:
@@ -29,12 +29,12 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
     s.bind((HOST, PORT))
 except socket.error as msg:
-    print('Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+    print('Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + str(msg[1]))
     sys.exit()
 
 s.listen(1000)
 
-print("[%s] TCP ECHO (fixed-length messages) Server is waiting for incoming connections ... " % strftime("%Y-%m-%d %H:%M:%S", gmtime()))
+print("[%s] TCP ECHO Server is waiting for incoming connections ... " % strftime("%Y-%m-%d %H:%M:%S", gmtime()))
 
 while True:
 
@@ -46,7 +46,8 @@ while True:
         while True:
             try :
                 data = recvall(connection, MAX_PACKET_LENGTH)
-                print("[%s] Client %s sent \'%s\' " % (strftime("%Y-%m-%d %H:%M:%S", gmtime()), client_address, data))
+                data_text = data.decode("utf-8", errors="replace")
+                print("[%s] Client %s sent \'%s\' " % (strftime("%Y-%m-%d %H:%M:%S", gmtime()), client_address, data_text))
 
                 if data:
 
