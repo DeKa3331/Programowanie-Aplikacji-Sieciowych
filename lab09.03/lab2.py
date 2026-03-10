@@ -3,8 +3,8 @@ import sys
 from typing import Callable
 
 
-HOST1 = "ntp.task.gda.pl"
-PORT1 = 13
+HOST1 = "127.0.0.1"
+PORT1 = 13013
 
 TASK2_HOST = "127.0.0.1"
 TASK2_PORT = 2900
@@ -38,7 +38,7 @@ TASK12_MAX_LEN = TASK11_MAX_LEN
 
 
 TASK_TOGGLES: dict[int, bool] = {
-	1: False, #not working
+	1: True,
 	2: False,
 	3: False,
 	4: False,
@@ -49,17 +49,26 @@ TASK_TOGGLES: dict[int, bool] = {
 	9: False,
 	10: False,
 	11: False,
-	12: True,
+	12: False,
 }
 
 #not working
 def task_1() -> None:
 	try:
 		with socket.create_connection((HOST1, PORT1), timeout=5) as connection:
-			connection.sendall(b"\r\n")
-			response = connection.recv(4096)
+			chunks: list[bytes] = []
+			while True:
+				chunk = connection.recv(1024)
+				if not chunk:
+					break
+				chunks.append(chunk)
 
-		print(f"[Zadanie 1] Data i czas: {response.decode('ascii', errors='replace').strip()}")
+			response = b"".join(chunks).decode("ascii", errors="replace").strip()
+
+		if response:
+			print(f"[Zadanie 1] Data i czas: {response}")
+		else:
+			print("[Zadanie 1] Serwer nie zwrócił danych.")
 	except OSError as error:
 		print(f"[Zadanie 1] Błąd połączenia/komunikacji: {error}")
 
