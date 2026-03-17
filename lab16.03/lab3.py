@@ -33,7 +33,6 @@ TASK_TOGGLES: dict[int, bool] = {
 	13: False,
 	14: False,
 	15: True,
-	16: False,
 }
 
 
@@ -196,21 +195,16 @@ def task_15() -> None:
 		print(f"[Zadanie 15] Błąd połączenia/komunikacji: {error}")
 
 
-def task_16() -> None:
-	print("[Zadanie 16] Brak implementacji.")
-
-
 def main() -> None:
 	task_handlers: dict[int, Callable[[], None]] = {
 		13: task_13,
 		14: task_14,
 		15: task_15,
-		16: task_16,
 	}
 
 	any_task_enabled = False
 
-	for task_number in range(13, 17):
+	for task_number in range(13, 16):
 		if not TASK_TOGGLES.get(task_number, False):
 			continue
 
