@@ -45,7 +45,9 @@ Wyniki byly nastepujace:
 [Zadanie 4] Krótszy czas miało UDP.
 
 
-dla 10000:
+#dla 10000:
+
+
 [Zadanie 4] Porównanie czasu TCP i UDP na localhost.
 [Zadanie 4] Host/port: 127.0.0.1:5000
 [Zadanie 4] Liczba pakietów: 10000
