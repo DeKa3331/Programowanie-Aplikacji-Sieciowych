@@ -19,7 +19,7 @@ TASK4_ATTACHMENT_PATH = r"C:\Users\Jakub\Desktop\paradygmaty.txt" #moj losowy tx
 
 TASK5_HOST = "127.0.0.1"
 TASK5_PORT = 2529
-TASK5_IMAGE_PATH = r"C:\Users\Jakub\Desktop\obrazek.jpg"
+TASK5_IMAGE_PATH = r"C:\Users\Jakub\Desktop\rf2.jpg"
 
 TASK6_HOST = "127.0.0.1"
 TASK6_PORT = 2530
@@ -27,18 +27,40 @@ TASK6_PORT = 2530
 TASK7_HOST = "127.0.0.1"
 TASK7_PORT = 2531
 
+TASK8_HOST = "127.0.0.1"
+TASK8_PORT = 2532
+TASK8_IMAGE_PATH = r"C:\Users\Jakub\Desktop\rf2.jpg"
+
+TASK9_HOST = "127.0.0.1"
+TASK9_PORT = 2533
+TASK9_HTMLMESSAGE= """<h1>Wiadomość testowa</h1>
+<p>To jest <b>pogrubiony</b>, <i>pochylony</i> i <u>podkreślony</u> tekst.</p>
+<p>Sprawdzam wysyłanie wiadomości HTML przez SMTP.</p>
+<ul>
+  <li>punkt 1</li>
+  <li>punkt 2</li>
+  <li>punkt 3</li>
+</ul>"""
+
+TASK10_HOST = "127.0.0.1"
+TASK10_PORT = 2534
+TASK10_MAIL_FROM = "test@localhost"
+TASK10_RCPT_TO = "odbiorca@localhost"
+TASK10_SUBJECT = "zad10 test"
+TASK10_BODY = "To jest test serwera SMTP z zadania 10."
+
 
 TASK_TOGGLES: dict[int, bool] = {
 	1: False,
 	2: False,
 	3: False,
-	4: True,
+	4: False,
 	5: False,
 	6: False,
 	7: False,
 	8: False,
 	9: False,
-	10: False,
+	10: True,
 }
 
 
@@ -507,15 +529,171 @@ def task_7() -> None:
 
 
 def task_8() -> None:
-	print("[zad8] TODO: implementacja zadania 8")
+	print(f"[zad8] SMTP image attachment -> {TASK8_HOST}:{TASK8_PORT}")
+
+	mail_from = input("[zad8] MAIL FROM: ").strip()
+	rcpt_raw = input("[zad8] RCPT TO (oddziel przecinkami): ").strip()
+	subject = input("[zad8] Subject: ").strip() or "image attachment"
+	body = input("[zad8] Message body: ").strip() or "Wiadomosc z zalacznikiem obrazkowym."
+	image_path = input(f"[zad8] Sciezka do obrazka [{TASK8_IMAGE_PATH}]: ").strip() or TASK8_IMAGE_PATH
+
+	recipients = [item.strip() for item in rcpt_raw.split(",") if item.strip()]
+	if not mail_from or not recipients or not image_path:
+		print("[zad8] MAIL FROM, min. 1 odbiorca i sciezka obrazka sa wymagane.")
+		return
+
+	try:
+		file_path = Path(image_path)
+		file_data = file_path.read_bytes()
+		file_b64 = base64.b64encode(file_data).decode("ascii")
+		file_name = file_path.name
+		ext = file_path.suffix.lower()
+		if ext in {".jpg", ".jpeg"}:
+			image_type = "image/jpeg"
+		elif ext == ".png":
+			image_type = "image/png"
+		elif ext == ".gif":
+			image_type = "image/gif"
+		else:
+			image_type = "application/octet-stream"
+	except OSError as error:
+		print(f"[zad8] Blad odczytu pliku: {error}")
+		return
+
+	boundary = "----PAS-LAB6-BOUNDARY-IMG-001"
+	header_to = ", ".join(recipients)
+	message_data = (
+		f"From: {mail_from}\r\n"
+		f"To: {header_to}\r\n"
+		f"Subject: {subject}\r\n"
+		"MIME-Version: 1.0\r\n"
+		f"Content-Type: multipart/mixed; boundary=\"{boundary}\"\r\n"
+		"\r\n"
+		f"--{boundary}\r\n"
+		"Content-Type: text/plain; charset=utf-8\r\n"
+		"\r\n"
+		f"{body}\r\n"
+		f"--{boundary}\r\n"
+		f"Content-Type: {image_type}; name=\"{file_name}\"\r\n"
+		"Content-Transfer-Encoding: base64\r\n"
+		f"Content-Disposition: attachment; filename=\"{file_name}\"\r\n"
+		"\r\n"
+		f"{file_b64}\r\n"
+		f"--{boundary}--\r\n"
+		"."
+	)
+
+	try:
+		with socket.create_connection((TASK8_HOST, TASK8_PORT), timeout=15) as connection:
+			connection.settimeout(15)
+			reader = connection.makefile("rb")
+			writer = connection.makefile("wb")
+
+			code, lines = read_smtp_response(reader)
+			require_code(code, {220}, lines)
+			for line in lines:
+				print(f"[zad8] S: {line}")
+
+			smtp_roundtrip(reader, writer, "EHLO localhost", {250}, "zad8")
+			smtp_roundtrip(reader, writer, f"MAIL FROM:<{mail_from}>", {250, 251}, "zad8")
+			for recipient in recipients:
+				smtp_roundtrip(reader, writer, f"RCPT TO:<{recipient}>", {250, 251}, "zad8")
+			smtp_roundtrip(reader, writer, "DATA", {354}, "zad8")
+			smtp_roundtrip(reader, writer, message_data, {250}, "zad8")
+			smtp_roundtrip(reader, writer, "QUIT", {221}, "zad8")
+
+		print(f"[zad8] SMTP MIME image flow finished successfully. Zalacznik: {file_name}")
+	except (OSError, RuntimeError, TimeoutError) as error:
+		print(f"[zad8] Error: {error}")
 
 
 def task_9() -> None:
-	print("[zad9] TODO: implementacja zadania 9")
+	print(f"[zad9] SMTP HTML mail -> {TASK9_HOST}:{TASK9_PORT}")
+
+	mail_from = input("[zad9] MAIL FROM: ").strip()
+	rcpt_raw = input("[zad9] RCPT TO (oddziel przecinkami): ").strip()
+	subject = input("[zad9] Subject: ").strip() or "html mail"
+	# html_body = input("[zad9] HTML body: ").strip() or "<b>pogrubienie</b> <i>pochylenie</i> <u>podkreslenie</u>"
+	html_body = TASK9_HTMLMESSAGE
+
+	recipients = [item.strip() for item in rcpt_raw.split(",") if item.strip()]
+	if not mail_from or not recipients:
+		print("[zad9] MAIL FROM i min. 1 odbiorca sa wymagane.")
+		return
+
+	header_to = ", ".join(recipients)
+	message_data = (
+		f"From: {mail_from}\r\n"
+		f"To: {header_to}\r\n"
+		f"Subject: {subject}\r\n"
+		"MIME-Version: 1.0\r\n"
+		"Content-Type: text/html; charset=utf-8\r\n"
+		"\r\n"
+		f"<html><body>{html_body}</body></html>\r\n"
+		"."
+	)
+
+	try:
+		with socket.create_connection((TASK9_HOST, TASK9_PORT), timeout=15) as connection:
+			connection.settimeout(15)
+			reader = connection.makefile("rb")
+			writer = connection.makefile("wb")
+
+			code, lines = read_smtp_response(reader)
+			require_code(code, {220}, lines)
+			for line in lines:
+				print(f"[zad9] S: {line}")
+
+			smtp_roundtrip(reader, writer, "EHLO localhost", {250}, "zad9")
+			smtp_roundtrip(reader, writer, f"MAIL FROM:<{mail_from}>", {250, 251}, "zad9")
+			for recipient in recipients:
+				smtp_roundtrip(reader, writer, f"RCPT TO:<{recipient}>", {250, 251}, "zad9")
+			smtp_roundtrip(reader, writer, "DATA", {354}, "zad9")
+			smtp_roundtrip(reader, writer, message_data, {250}, "zad9")
+			smtp_roundtrip(reader, writer, "QUIT", {221}, "zad9")
+
+		print("[zad9] SMTP HTML flow finished successfully.")
+	except (OSError, RuntimeError, TimeoutError) as error:
+		print(f"[zad9] Error: {error}")
 
 
 def task_10() -> None:
-	print("[zad10] TODO: implementacja zadania 10")
+	print(f"[zad10] SMTP simulation test -> {TASK10_HOST}:{TASK10_PORT}")
+
+	try:
+		with socket.create_connection((TASK10_HOST, TASK10_PORT), timeout=15) as connection:
+			connection.settimeout(15)
+			reader = connection.makefile("rb")
+			writer = connection.makefile("wb")
+
+			code, lines = read_smtp_response(reader)
+			require_code(code, {220}, lines)
+			for line in lines:
+				print(f"[zad10] S: {line}")
+
+			smtp_roundtrip(reader, writer, "EHLO localhost", {250}, "zad10")
+			smtp_roundtrip(reader, writer, "NOOP", {250}, "zad10")
+			smtp_roundtrip(reader, writer, f"MAIL FROM:<{TASK10_MAIL_FROM}>", {250, 251}, "zad10")
+			smtp_roundtrip(reader, writer, f"RCPT TO:<{TASK10_RCPT_TO}>", {250, 251}, "zad10")
+			smtp_roundtrip(reader, writer, "DATA", {354}, "zad10")
+
+			message_data = (
+				f"From: {TASK10_MAIL_FROM}\r\n"
+				f"To: {TASK10_RCPT_TO}\r\n"
+				f"Subject: {TASK10_SUBJECT}\r\n"
+				"\r\n"
+				f"{TASK10_BODY}\r\n"
+				"."
+			)
+
+			smtp_roundtrip(reader, writer, message_data, {250}, "zad10")
+			smtp_roundtrip(reader, writer, "RSET", {250}, "zad10")
+			smtp_roundtrip(reader, writer, "X-UNKNOWN-COMMAND", {502}, "zad10")
+			smtp_roundtrip(reader, writer, "QUIT", {221}, "zad10")
+
+		print("[zad10] SMTP simulation test finished successfully.")
+	except (OSError, RuntimeError, TimeoutError) as error:
+		print(f"[zad10] Error: {error}")
 
 
 def main() -> None:
